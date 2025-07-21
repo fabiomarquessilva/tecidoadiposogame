@@ -38,9 +38,94 @@
     <!-- Babel CDN for JSX transformation in browser -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- Firebase CDNs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables for Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Export Firebase instances and functions for React context
+        window.firebaseApp = app;
+        window.firebaseAuth = auth;
+        window.firebaseDb = db;
+        window.appId = appId;
+        window.initialAuthToken = initialAuthToken;
+        window.signInAnonymously = signInAnonymously; // Export signInAnonymously
+        window.signInWithCustomToken = signInWithCustomToken; // Export signInWithCustomToken
+        window.onAuthStateChanged = onAuthStateChanged; // Export onAuthStateChanged
+        window.doc = doc; // Export doc
+        window.setDoc = setDoc; // Export setDoc
+        window.onSnapshot = onSnapshot; // Export onSnapshot
+        window.collection = collection; // Export collection
+    </script>
+
     <script type="text/babel">
-        // Context for User (removed db)
+        // Context for Firebase and User
         const AppContext = React.createContext();
+
+        // AppProvider component to manage Firebase auth and user state
+        const AppProvider = ({ children }) => {
+          const [user, setUser] = React.useState(null);
+          const [userId, setUserId] = React.useState(null);
+          const [isAuthReady, setIsAuthReady] = React.useState(false);
+          const [db, setDb] = React.useState(null);
+          const [auth, setAuth] = React.useState(null);
+
+          React.useEffect(() => {
+            // Ensure Firebase is loaded from the module script
+            if (window.firebaseApp && window.firebaseAuth && window.firebaseDb) {
+              const app = window.firebaseApp;
+              const authInstance = window.firebaseAuth;
+              const dbInstance = window.firebaseDb;
+              const initialAuthToken = window.initialAuthToken;
+
+              // Get Firebase functions from window scope
+              const { signInAnonymously, signInWithCustomToken, onAuthStateChanged, doc, setDoc, onSnapshot, collection } = window;
+
+              setAuth(authInstance);
+              setDb(dbInstance);
+
+              const initializeAuth = async () => {
+                try {
+                  if (initialAuthToken) {
+                    await signInWithCustomToken(authInstance, initialAuthToken); // Corrected call
+                  } else {
+                    await signInAnonymously(authInstance); // Corrected call
+                  }
+                } catch (error) {
+                  console.error("Erro na autenticação Firebase:", error);
+                  await signInAnonymously(authInstance); // Fallback to anonymous, corrected call
+                }
+              };
+
+              const unsubscribe = onAuthStateChanged(authInstance, (currentUser) => { // Corrected call
+                setUser(currentUser);
+                setUserId(currentUser?.uid || crypto.randomUUID()); // Use random UUID if no auth UID
+                setIsAuthReady(true);
+              });
+
+              initializeAuth();
+
+              return () => unsubscribe(); // Cleanup auth listener
+            }
+          }, []); // Run once on component mount
+
+          return (
+            <AppContext.Provider value={{ db, auth, user, userId, isAuthReady, appId: window.appId, doc: window.doc, setDoc: window.setDoc, onSnapshot: window.onSnapshot, collection: window.collection }}>
+              {children}
+            </AppContext.Provider>
+          );
+        };
 
         // Question data
         const questionsData = [
@@ -206,7 +291,7 @@
           },
           {
             id: 'q_review_8',
-            text: 'Revisão: Lipogênese é o armazenamento de gordura, e lipólise é a quebra de gordura para energia. Tente novamente!',
+            text: 'Revisão: Lipogênese é o armazenamento de gordura, e lipólise é a quebra da gordura para energia. Tente novamente!',
             alternatives: [
               { id: 'a', text: 'Voltar para a pergunta 8', isCorrect: false, nextQuestionId: 'q8' },
             ],
@@ -301,8 +386,24 @@
           );
         };
 
+        // Utility function to shuffle an array
+        const shuffleArray = (array) => {
+            let currentIndex = array.length, randomIndex;
+            // While there remain elements to shuffle.
+            while (currentIndex !== 0) {
+                // Pick a remaining element.
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                // And swap it with the current element.
+                [array[currentIndex], array[randomIndex]] = [
+                    array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        };
+
         // GameScreen component
         const GameScreen = ({ userName, studentId, codename, onGameEnd }) => {
+          const { db, userId, isAuthReady, appId, doc, setDoc } = React.useContext(AppContext); // Get Firebase instances from context
           const [currentQuestionIndex, setCurrentQuestionIndex] = React.useState(0);
           const [currentQuestion, setCurrentQuestion] = React.useState(questionsData[0]);
           const [userAnswers, setUserAnswers] = React.useState([]); // Stores { questionId, selectedAnswerId, isCorrect }
@@ -310,6 +411,40 @@
           const [message, setMessage] = React.useState('');
           const [showMessage, setShowMessage] = React.useState(false);
           const [score, setScore] = React.useState(0);
+          const [shuffledAlternatives, setShuffledAlternatives] = React.useState([]);
+
+          // Effect to update Firestore when user data changes
+          React.useEffect(() => {
+            const updateFirestoreSession = async () => {
+              if (isAuthReady && db && userId && userName) {
+                try {
+                  const sessionDocRef = doc(db, `artifacts/${appId}/public/data/game_sessions`, userId);
+                  await setDoc(sessionDocRef, {
+                    userName,
+                    studentId,
+                    codename,
+                    currentQuestionId: currentQuestion ? currentQuestion.id : 'finished',
+                    score,
+                    answers: userAnswers,
+                    status: currentQuestion ? 'active' : 'finished',
+                    timestamp: new Date(),
+                  }, { merge: true }); // Use merge to update existing fields without overwriting
+                  console.log("Sessão atualizada no Firestore.");
+                } catch (error) {
+                  console.error("Erro ao atualizar sessão no Firestore:", error);
+                }
+              }
+            };
+            updateFirestoreSession();
+          }, [score, currentQuestion, userAnswers, isAuthReady, db, userId, userName, studentId, codename, appId, doc, setDoc]);
+
+
+          // Shuffle alternatives when the current question changes
+          React.useEffect(() => {
+            if (currentQuestion) {
+              setShuffledAlternatives(shuffleArray([...currentQuestion.alternatives]));
+            }
+          }, [currentQuestion]);
 
           React.useEffect(() => {
             if (userAnswers.length > 0) {
@@ -384,7 +519,7 @@
                   {currentQuestion.text}
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {currentQuestion.alternatives.map((alt) => (
+                  {shuffledAlternatives.map((alt) => ( // Use shuffledAlternatives here
                     <button
                       key={alt.id}
                       onClick={() => handleAnswer(alt)}
@@ -418,6 +553,7 @@
 
         // ResultScreen component (modified for no storage and colored groups)
         const ResultScreen = ({ userName, studentId, codename, userAnswers, score, onRestart }) => {
+          const { db, userId, isAuthReady, appId, doc, setDoc } = React.useContext(AppContext); // Get Firebase instances from context
           const totalMainQuestions = questionsData.filter(q => !q.id.startsWith('q_review_')).length;
           const correctAnswersCount = userAnswers.filter(a => a.isCorrect && !a.questionId.startsWith('q_review_')).length;
 
@@ -510,20 +646,22 @@
           };
 
           return (
-            <div className="font-inter">
-              {currentScreen === 'login' && <LoginScreen onLogin={handleLogin} />}
-              {currentScreen === 'game' && <GameScreen userName={userName} studentId={studentId} codename={codename} onGameEnd={handleGameEnd} />}
-              {currentScreen === 'results' && (
-                <ResultScreen
-                  userName={userName}
-                  studentId={studentId}
-                  codename={codename}
-                  userAnswers={userGameAnswers}
-                  score={userGameScore}
-                  onRestart={handleRestartGame}
-                />
-              )}
-            </div>
+            <AppProvider> {/* Wrap with AppProvider */}
+              <div className="font-inter">
+                {currentScreen === 'login' && <LoginScreen onLogin={handleLogin} />}
+                {currentScreen === 'game' && <GameScreen userName={userName} studentId={studentId} codename={codename} onGameEnd={handleGameEnd} />}
+                {currentScreen === 'results' && (
+                  <ResultScreen
+                    userName={userName}
+                    studentId={studentId}
+                    codename={codename}
+                    userAnswers={userGameAnswers}
+                    score={userGameScore}
+                    onRestart={handleRestartGame}
+                  />
+                )}
+              </div>
+            </AppProvider>
           );
         };
 
