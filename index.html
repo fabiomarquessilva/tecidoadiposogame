@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo Interativo: Tecido Adiposo</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- React CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel CDN for JSX transformation in browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        // Context for User (removed db)
+        const AppContext = React.createContext();
+
+        // Question data
+        const questionsData = [
+          {
+            id: 'q1',
+            text: 'O que é o tecido adiposo e qual sua principal função no organismo?',
+            alternatives: [
+              { id: 'a', text: 'Armazenamento de energia na forma de gordura, isolamento térmico, proteção mecânica e secreção de hormônios.', isCorrect: true, nextQuestionId: 'q2' },
+              { id: 'b', text: 'Principalmente responsável pela contração muscular e movimento.', isCorrect: false, nextQuestionId: 'q_review_1' },
+              { id: 'c', text: 'Composto por neurônios para transmissão de impulsos nervosos.', isCorrect: false, nextQuestionId: 'q_review_1' },
+              { id: 'd', text: 'Forma a estrutura óssea do corpo.', isCorrect: false, nextQuestionId: 'q_review_1' },
+            ],
+            correctAnswerId: 'a',
+          },
+          {
+            id: 'q2',
+            text: 'Quais são os três tipos de tecido adiposo encontrados no corpo humano?',
+            alternatives: [
+              { id: 'a', text: 'Branco, Marrom e Bege.', isCorrect: true, nextQuestionId: 'q3' },
+              { id: 'b', text: 'Amarelo, Vermelho e Azul.', isCorrect: false, nextQuestionId: 'q_review_2' },
+              { id: 'c', text: 'Liso, Estriado e Cardíaco.', isCorrect: false, nextQuestionId: 'q_review_2' },
+              { id: 'd', text: 'Denso, Frouxo e Reticular.', isCorrect: false, nextQuestionId: 'q_review_2' },
+            ],
+            correctAnswerId: 'a',
+          },
+          {
+            id: 'q3',
+            text: 'Qual a principal diferença estrutural entre o adipócito branco e o marrom?',
+            alternatives: [
+              { id: 'a', text: 'Branco tem uma grande gota de gordura e marrom tem múltiplas pequenas gotas e muitas mitocôndrias.', isCorrect: true, nextQuestionId: 'q4' },
+              { id: 'b', text: 'Branco é multilocular e marrom é unilocular.', isCorrect: false, nextQuestionId: 'q_review_3' },
+              { id: 'c', text: 'Branco tem mais mitocôndrias que o marrom.', isCorrect: false, nextQuestionId: 'q_review_3' },
+              { id: 'd', text: 'Não há diferença estrutural significativa.', isCorrect: false, nextQuestionId: 'q_review_3' },
+            ],
+            correctAnswerId: 'a',
+          },
+          {
+            id: 'q4',
+            text: 'Quais são as principais localizações anatômicas do tecido adiposo no corpo humano?',
+            alternatives: [
+              { id: 'a', text: 'Subcutâneo, visceral e depósitos específicos como medula óssea.', isCorrect: true, nextQuestionId: 'q5' },
+              { id: 'b', text: 'Apenas no cérebro e na medula espinhal.', isCorrect: false, nextQuestionId: 'q_review_4' },
+              { id: 'c', text: 'Exclusivamente nos músculos esqueléticos.', isCorrect: false, nextQuestionId: 'q_review_4' },
+              { id: 'd', text: 'Somente na superfície dos ossos.', isCorrect: false, nextQuestionId: 'q_review_4' },
+            ],
+            correctAnswerId: 'a',
+          },
+          {
+            id: 'q5',
+            text: 'Quais são as quatro principais funções do tecido adiposo no organismo?',
+            alternatives: [
+              { id: 'a', text: 'Armazenamento energético, isolamento térmico, proteção mecânica e função endócrina.', isCorrect: true, nextQuestionId: 'q6' },
+              { id: 'b', text: 'Produção de glóbulos vermelhos, transporte de oxigênio, coagulação sanguínea e defesa imunológica.', isCorrect: false, nextQuestionId: 'q_review_5' },
+              { id: 'c', text: 'Digestão de alimentos, absorção de nutrientes, eliminação de resíduos e regulação do pH.', isCorrect: false, nextQuestionId: 'q_review_5' },
+              { id: 'd', text: 'Contração muscular, transmissão nervosa, sustentação e locomoção.', isCorrect: false, nextQuestionId: 'q_review_5' },
+            ],
+            correctAnswerId: 'a',
+          },
+          {
+            id: 'q6',
+            text: 'O que são adipocinas e quais são as principais produzidas pelo tecido adiposo?',
+            alternatives: [
+              { id: 'a', text: 'Hormônios como Leptina, Adiponectina e Resistina.', isCorrect: true, nextQuestionId: 'q7' },
+              { id: 'b', text: 'Enzimas digestivas.', isCorrect: false, nextQuestionId: 'q_review_6' },
+              { id: 'c', text: 'Proteínas estruturais do tecido conjuntivo.', isCorrect: false, nextQuestionId: 'q_review_6' },
+              { id: 'd', text: 'Células de defesa do sistema imunológico.', isCorrect: false, nextQuestionId: 'q_review_6' },
+            ],
+            correctAnswerId: 'a',
+          },
+          {
+            id: 'q7',
+            text: 'Como ocorre o desenvolvimento do tecido adiposo (adipogênese)?',
+            alternatives: [
+              { id: 'a', text: 'Células-tronco mesenquimais se diferenciam em pré-adipócitos e depois em adipócitos maduros.', isCorrect: true, nextQuestionId: 'q8' },
+              { id: 'b', text: 'Através da divisão de células musculares.', isCorrect: false, nextQuestionId: 'q_review_7' },
+              { id: 'c', text: 'Pela fusão de células nervosas.', isCorrect: false, nextQuestionId: 'q_review_7' },
+              { id: 'd', text: 'Formação direta a partir de células epiteliais.', isCorrect: false, nextQuestionId: 'q_review_7' },
+            ],
+            correctAnswerId: 'a',
+          },
+          {
+            id: 'q8',
+            text: 'Explique os processos de lipogênese e lipólise no adipócito.',
+            alternatives: [
+              { id: 'a', text: 'Lipogênese é o armazenamento de gordura e lipólise é a quebra da gordura para energia.', isCorrect: true, nextQuestionId: 'q9' },
+              { id: 'b', text: 'Lipogênese é a quebra de gordura e lipólise é o armazenamento.', isCorrect: false, nextQuestionId: 'q_review_8' },
+              { id: 'c', text: 'Ambos são processos de síntese de proteínas.', isCorrect: false, nextQuestionId: 'q_review_8' },
+              { id: 'd', text: 'Ambos são processos de transporte de oxigênio.', isCorrect: false, nextQuestionId: 'q_review_8' },
+            ],
+            correctAnswerId: 'a',
+          },
+          {
+            id: 'q9',
+            text: 'Quais patologias estão associadas ao desequilíbrio na quantidade e função do tecido adiposo?',
+            alternatives: [
+              { id: 'a', text: 'Obesidade, Diabetes Tipo 2, doenças cardiovasculares e lipodistrofias.', isCorrect: true, nextQuestionId: 'q10' },
+              { id: 'b', text: 'Anemia, hemofilia e leucemia.', isCorrect: false, nextQuestionId: 'q_review_9' },
+              { id: 'c', text: 'Osteoporose, artrite e reumatismo.', isCorrect: false, nextQuestionId: 'q_review_9' },
+              { id: 'd', text: 'Catarata, glaucoma e miopia.', isCorrect: false, nextQuestionId: 'q_review_9' },
+            ],
+            correctAnswerId: 'a',
+          },
+          {
+            id: 'q10',
+            text: 'Qual a importância do tecido adiposo marrom para recém-nascidos?',
+            alternatives: [
+              { id: 'a', text: 'Produção de calor (termogênese).', isCorrect: true, nextQuestionId: 'end' },
+              { id: 'b', text: 'Armazenamento de grandes quantidades de gordura para crescimento.', isCorrect: false, nextQuestionId: 'q_review_10' },
+              { id: 'c', text: 'Proteção mecânica contra impactos.', isCorrect: false, nextQuestionId: 'q_review_10' },
+              { id: 'd', text: 'Regulação do apetite.', isCorrect: false, nextQuestionId: 'q_review_10' },
+            ],
+            correctAnswerId: 'a',
+          },
+          // Review questions - these can loop back to relevant topics or just be "info" screens
+          {
+            id: 'q_review_1',
+            text: 'Revisão: O tecido adiposo é um tipo de tecido conjuntivo especializado no armazenamento de energia, isolamento térmico, proteção e secreção hormonal. Tente novamente!',
+            alternatives: [
+              { id: 'a', text: 'Voltar para a pergunta 1', isCorrect: false, nextQuestionId: 'q1' },
+            ],
+          },
+          {
+            id: 'q_review_2',
+            text: 'Revisão: Os três tipos de tecido adiposo são Branco, Marrom e Bege. Cada um com funções específicas. Tente novamente!',
+            alternatives: [
+              { id: 'a', text: 'Voltar para a pergunta 2', isCorrect: false, nextQuestionId: 'q2' },
+            ],
+          },
+          {
+            id: 'q_review_3',
+            text: 'Revisão: A principal diferença entre adipócitos brancos (uniloculares) e marrons (multiloculares com muitas mitocôndrias) está na estrutura de armazenamento de gordura e na capacidade de termogênese. Tente novamente!',
+            alternatives: [
+              { id: 'a', text: 'Voltar para a pergunta 3', isCorrect: false, nextQuestionId: 'q3' },
+            ],
+          },
+          {
+            id: 'q_review_4',
+            text: 'Revisão: O tecido adiposo é encontrado principalmente de forma subcutânea, visceral e em depósitos específicos como na medula óssea. Tente novamente!',
+            alternatives: [
+              { id: 'a', text: 'Voltar para a pergunta 4', isCorrect: false, nextQuestionId: 'q4' },
+            ],
+          },
+          {
+            id: 'q_review_5',
+            text: 'Revisão: As quatro funções principais são armazenamento energético, isolamento térmico, proteção mecânica e função endócrina. Tente novamente!',
+            alternatives: [
+              { id: 'a', text: 'Voltar para a pergunta 5', isCorrect: false, nextQuestionId: 'q5' },
+            ],
+          },
+          {
+            id: 'q_review_6',
+            text: 'Revisão: Adipocinas são hormônios como Leptina, Adiponectina e Resistina, que regulam processos metabólicos. Tente novamente!',
+            alternatives: [
+              { id: 'a', text: 'Voltar para a pergunta 6', isCorrect: false, nextQuestionId: 'q6' },
+            ],
+          },
+          {
+            id: 'q_review_7',
+            text: 'Revisão: A adipogênese envolve a diferenciação de células-tronco mesenquimais em adipócitos maduros. Tente novamente!',
+            alternatives: [
+              { id: 'a', text: 'Voltar para a pergunta 7', isCorrect: false, nextQuestionId: 'q7' },
+            ],
+          },
+          {
+            id: 'q_review_8',
+            text: 'Revisão: Lipogênese é o armazenamento de gordura, e lipólise é a quebra de gordura para energia. Tente novamente!',
+            alternatives: [
+              { id: 'a', text: 'Voltar para a pergunta 8', isCorrect: false, nextQuestionId: 'q8' },
+            ],
+          },
+          {
+            id: 'q_review_9',
+            text: 'Revisão: Patologias como obesidade, diabetes tipo 2 e lipodistrofias estão associadas ao desequilíbrio do tecido adiposo. Tente novamente!',
+            alternatives: [
+              { id: 'a', text: 'Voltar para a pergunta 9', isCorrect: false, nextQuestionId: 'q9' },
+            ],
+          },
+          {
+            id: 'q_review_10',
+            text: 'Revisão: O tecido adiposo marrom é crucial para a termogênese em recém-nascidos. Tente novamente!',
+            alternatives: [
+              { id: 'a', text: 'Voltar para a pergunta 10', isCorrect: false, nextQuestionId: 'q10' },
+            ],
+          },
+        ];
+
+        // List of Netflix character names for codenames
+        const netflixCodenames = [
+          'Eleven', 'Dustin', 'Mike', 'Lucas', 'Max', 'Will', 'Hopper', 'Joyce', // Stranger Things
+          'Professor', 'Tokyo', 'Berlin', 'Rio', 'Nairobi', 'Denver', 'Helsinki', 'Oslo', // La Casa de Papel
+          'Geralt', 'Yennefer', 'Ciri', 'Jaskier', // The Witcher
+          'Beth Harmon', 'Benny Watts', // The Queen's Gambit
+          'Maeve Wiley', 'Otis Milburn', 'Eric Effiong', // Sex Education
+          'Wednesday Addams', 'Enid Sinclair', // Wednesday
+          'Queen Elizabeth', 'Prince Philip', 'Princess Diana', // The Crown
+          'Pablo Escobar', 'Javier Peña', 'Steve Murphy', // Narcos
+          'Joe Goldberg', 'Love Quinn', // You
+          'Kimmy Schmidt', 'Titus Andromedon', // Unbreakable Kimmy Schmidt
+        ];
+
+        // LoginScreen component
+        const LoginScreen = ({ onLogin }) => {
+          const [userName, setUserName] = React.useState('');
+          const [studentId, setStudentId] = React.useState('');
+          const [showError, setShowError] = React.useState(false);
+
+          const generateCodename = () => {
+            const randomIndex = Math.floor(Math.random() * netflixCodenames.length);
+            return netflixCodenames[randomIndex];
+          };
+
+          const handleLogin = () => {
+            if (userName.trim() && studentId.trim()) {
+              const codename = generateCodename();
+              onLogin(userName.trim(), studentId.trim(), codename);
+            } else {
+              setShowError(true);
+            }
+          };
+
+          return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-400 to-indigo-600 p-4">
+              <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md text-center transform transition-all duration-500 hover:scale-105">
+                <h1 className="text-4xl font-extrabold text-gray-800 mb-6 font-inter">Bem-vindo ao Jogo do Tecido Adiposo!</h1>
+                <p className="text-lg text-gray-600 mb-8 font-inter">Por favor, insira seu nome e matrícula para começar.</p>
+                <input
+                  type="text"
+                  placeholder="Seu Nome"
+                  className={`w-full p-4 mb-4 border-2 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300 ${showError && !userName.trim() ? 'border-red-500' : 'border-gray-300'}`}
+                  value={userName}
+                  onChange={(e) => {
+                    setUserName(e.target.value);
+                    setShowError(false);
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Sua Matrícula"
+                  className={`w-full p-4 mb-4 border-2 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300 ${showError && !studentId.trim() ? 'border-red-500' : 'border-gray-300'}`}
+                  value={studentId}
+                  onChange={(e) => {
+                    setStudentId(e.target.value);
+                    setShowError(false);
+                  }}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') handleLogin();
+                  }}
+                />
+                {showError && <p className="text-red-500 text-sm mb-4">Por favor, preencha todos os campos.</p>}
+                <button
+                  onClick={handleLogin}
+                  className="w-full bg-indigo-600 text-white py-4 px-6 rounded-lg text-xl font-bold hover:bg-indigo-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                >
+                  Começar Jogo
+                </button>
+              </div>
+            </div>
+          );
+        };
+
+        // GameScreen component
+        const GameScreen = ({ userName, studentId, codename, onGameEnd }) => {
+          const [currentQuestionIndex, setCurrentQuestionIndex] = React.useState(0);
+          const [currentQuestion, setCurrentQuestion] = React.useState(questionsData[0]);
+          const [userAnswers, setUserAnswers] = React.useState([]); // Stores { questionId, selectedAnswerId, isCorrect }
+          const [selectedAlternative, setSelectedAlternative] = React.useState(null);
+          const [message, setMessage] = React.useState('');
+          const [showMessage, setShowMessage] = React.useState(false);
+          const [score, setScore] = React.useState(0);
+
+          React.useEffect(() => {
+            if (userAnswers.length > 0) {
+              const lastAnswer = userAnswers[userAnswers.length - 1];
+              // Only count score for main questions, not review questions
+              if (lastAnswer.isCorrect && !lastAnswer.questionId.startsWith('q_review_')) {
+                setScore(prevScore => prevScore + 1);
+              }
+            }
+          }, [userAnswers]);
+
+          const handleAnswer = (alternative) => {
+            setSelectedAlternative(alternative.id);
+            const isCorrect = alternative.isCorrect;
+            const currentQuestionId = currentQuestion.id;
+
+            const answerRecord = {
+              questionId: currentQuestionId,
+              selectedAnswerId: alternative.id,
+              isCorrect: isCorrect,
+            };
+            setUserAnswers((prev) => [...prev, answerRecord]);
+
+            setMessage(isCorrect ? 'Correto!' : 'Incorreto. Tente novamente ou revise o conteúdo.');
+            setShowMessage(true);
+
+            setTimeout(() => {
+              setShowMessage(false);
+              setSelectedAlternative(null);
+              const nextQuestionId = alternative.nextQuestionId;
+
+              if (nextQuestionId === 'end') {
+                onGameEnd(userAnswers, score);
+              } else {
+                const nextQuestion = questionsData.find(q => q.id === nextQuestionId);
+                if (nextQuestion) {
+                  setCurrentQuestion(nextQuestion);
+                  setCurrentQuestionIndex(prev => prev + 1);
+                } else {
+                  console.error('Próxima questão não encontrada:', nextQuestionId);
+                  onGameEnd(userAnswers, score); // End game if next question not found
+                }
+              }
+            }, 1500); // Show message for 1.5 seconds
+          };
+
+          if (!currentQuestion) {
+            return (
+              <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-400 to-indigo-600 p-4">
+                <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md text-center">
+                  <h2 className="text-2xl font-bold text-gray-800 mb-4">Carregando...</h2>
+                </div>
+              </div>
+            );
+          }
+
+          // Filter out review questions from the total count for display
+          const totalMainQuestions = questionsData.filter(q => !q.id.startsWith('q_review_')).length;
+          const currentMainQuestionNumber = questionsData.filter(q => !q.id.startsWith('q_review_')).indexOf(currentQuestion) + 1;
+
+
+          return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-400 to-indigo-600 p-4">
+              <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-2xl text-center relative">
+                <div className="absolute top-4 left-4 text-lg font-bold text-gray-700">
+                  Aluno: {userName} ({codename})
+                </div>
+                <div className="absolute top-4 right-4 text-lg font-bold text-gray-700">
+                  Questão {currentQuestion.id.startsWith('q_review_') ? 'Revisão' : currentMainQuestionNumber} / {totalMainQuestions}
+                </div>
+                <h2 className="text-3xl font-extrabold text-gray-800 mb-8 mt-12 font-inter leading-tight">
+                  {currentQuestion.text}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {currentQuestion.alternatives.map((alt) => (
+                    <button
+                      key={alt.id}
+                      onClick={() => handleAnswer(alt)}
+                      disabled={selectedAlternative !== null}
+                      className={`
+                        p-4 rounded-lg text-lg font-medium transition-all duration-300
+                        ${selectedAlternative === alt.id
+                          ? (alt.isCorrect ? 'bg-green-500 text-white shadow-lg' : 'bg-red-500 text-white shadow-lg')
+                          : 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200 hover:shadow-md'
+                        }
+                        ${selectedAlternative !== null ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}
+                      `}
+                    >
+                      {alt.text}
+                    </button>
+                  ))}
+                </div>
+                {showMessage && (
+                  <div
+                    className={`mt-6 p-4 rounded-lg text-xl font-bold ${
+                      message.includes('Correto') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    }`}
+                  >
+                    {message}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        };
+
+        // ResultScreen component (modified for no storage and colored groups)
+        const ResultScreen = ({ userName, studentId, codename, userAnswers, score, onRestart }) => {
+          const totalMainQuestions = questionsData.filter(q => !q.id.startsWith('q_review_')).length;
+          const correctAnswersCount = userAnswers.filter(a => a.isCorrect && !a.questionId.startsWith('q_review_')).length;
+
+          // Determine the group and color based on score
+          const getGroupInfo = (currentScore) => {
+            if (currentScore >= 9) {
+              return { name: 'Caminho Excelente', color: 'bg-green-500', description: 'Você demonstrou um excelente domínio do conteúdo!' };
+            } else if (currentScore >= 7) {
+              return { name: 'Caminho Bom', color: 'bg-blue-500', description: 'Sua performance foi muito boa, com poucas áreas para revisar.' };
+            } else if (currentScore >= 5) {
+              return { name: 'Caminho com Necessidade de Revisão', color: 'bg-yellow-500', description: 'Você acertou a maioria, mas algumas revisões podem ajudar a consolidar o conhecimento.' };
+            } else {
+              return { name: 'Caminho com Dificuldade', color: 'bg-red-500', description: 'É importante revisar os conceitos básicos do tecido adiposo. Não desanime!' };
+            }
+          };
+
+          const groupInfo = getGroupInfo(correctAnswersCount);
+
+          const getUserPathString = (answers) => {
+            return answers.filter(a => !a.questionId.startsWith('q_review_'))
+                          .map(a => {
+                            const question = questionsData.find(q => q.id === a.questionId);
+                            const alternative = question?.alternatives.find(alt => alt.id === a.selectedAnswerId);
+                            return `${question?.text.substring(0, 30)}... [${alternative?.text.substring(0, 20)}... ${a.isCorrect ? '✓' : '✗'}]`;
+                          })
+                          .join(' -> ');
+          };
+
+          return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-400 to-indigo-600 p-4">
+              <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-4xl text-center relative">
+                <h2 className="text-4xl font-extrabold text-gray-800 mb-6 font-inter">Resultados do Jogo</h2>
+                <p className="text-xl text-gray-700 mb-2">Aluno: <span className="font-bold">{userName}</span> (Matrícula: <span className="font-bold">{studentId}</span>)</p>
+                <p className="text-xl text-gray-700 mb-4">Codinome: <span className="font-bold text-indigo-700">{codename}</span></p>
+                <p className="text-2xl font-bold text-indigo-700 mb-8">
+                  Sua Pontuação: {correctAnswersCount} / {totalMainQuestions}
+                </p>
+
+                <h3 className="text-2xl font-bold text-gray-800 mb-4">Seu Caminho Trilhado:</h3>
+                <div className="bg-indigo-50 p-4 rounded-lg mb-8 text-gray-800 text-lg text-left break-words max-h-48 overflow-y-auto">
+                  {getUserPathString(userAnswers)}
+                </div>
+
+                <h3 className="text-2xl font-bold text-gray-800 mb-4">Seu Grupo de Caminho:</h3>
+                <div className={`p-4 rounded-lg text-white font-bold text-2xl mb-8 ${groupInfo.color}`}>
+                  {groupInfo.name}
+                </div>
+                <p className="text-lg text-gray-700 mb-8">{groupInfo.description}</p>
+
+                <button
+                  onClick={onRestart}
+                  className="mt-8 bg-green-600 text-white py-3 px-6 rounded-lg text-xl font-bold hover:bg-green-700 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                >
+                  Jogar Novamente
+                </button>
+              </div>
+            </div>
+          );
+        };
+
+        // Main App component
+        const App = () => {
+          const [currentScreen, setCurrentScreen] = React.useState('login'); // 'login', 'game', 'results'
+          const [userName, setUserName] = React.useState('');
+          const [studentId, setStudentId] = React.useState('');
+          const [codename, setCodename] = React.useState('');
+          const [userGameAnswers, setUserGameAnswers] = React.useState([]);
+          const [userGameScore, setUserGameScore] = React.useState(0);
+
+          const handleLogin = (name, id, code) => {
+            setUserName(name);
+            setStudentId(id);
+            setCodename(code);
+            setCurrentScreen('game');
+          };
+
+          const handleGameEnd = (answers, score) => {
+            setUserGameAnswers(answers);
+            setUserGameScore(score);
+            setCurrentScreen('results');
+          };
+
+          const handleRestartGame = () => {
+            setUserName('');
+            setStudentId('');
+            setCodename('');
+            setUserGameAnswers([]);
+            setUserGameScore(0);
+            setCurrentScreen('login');
+          };
+
+          return (
+            <div className="font-inter">
+              {currentScreen === 'login' && <LoginScreen onLogin={handleLogin} />}
+              {currentScreen === 'game' && <GameScreen userName={userName} studentId={studentId} codename={codename} onGameEnd={handleGameEnd} />}
+              {currentScreen === 'results' && (
+                <ResultScreen
+                  userName={userName}
+                  studentId={studentId}
+                  codename={codename}
+                  userAnswers={userGameAnswers}
+                  score={userGameScore}
+                  onRestart={handleRestartGame}
+                />
+              )}
+            </div>
+          );
+        };
+
+        // Render the App component into the root div
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
